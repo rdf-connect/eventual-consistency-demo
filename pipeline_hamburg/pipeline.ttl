@@ -1,0 +1,170 @@
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix stapi: <https://w3id.org/stapi#> .
+@prefix ex: <http://example.org/>.
+@prefix tree: <https://w3id.org/tree#>.
+@prefix sosa: <http://www.w3.org/ns/sosa/>.
+@prefix ssn: <http://www.w3.org/ns/ssn/>.
+
+
+### Import runners and processors
+<> owl:imports <./node_modules/@rdfc/js-runner/index.ttl>.
+<> owl:imports <./node_modules/ldes-client/processor.ttl>.
+<> owl:imports <./node_modules/@rdfc/log-processor-ts/processor.ttl>.
+# <> owl:imports <./node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
+
+# <> owl:imports <./node_modules/@rdfc/http-utils-processor-ts/processors.ttl>.
+<> owl:imports <./processors/http-utils-processor-ts/processors.ttl>.
+
+<> owl:imports <./processors/sds-storage-writer-ts/processor.ttl>.
+<> owl:imports <./processors/sparql-processor-ts/processor.ttl>.
+
+<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
+<> owl:imports <./node_modules/@rdfc/sparql-ingest-processor-ts/processors.ttl>.
+
+### Define the channels
+<members> a rdfc:Reader, rdfc:Writer.
+<mapped> a rdfc:Reader, rdfc:Writer.
+<sds> a rdfc:Reader, rdfc:Writer.
+
+### Define the pipeline
+<> a rdfc:Pipeline;
+   rdfc:consistsOf [
+       rdfc:instantiates rdfc:NodeRunner;
+       rdfc:processor <ldes-client>, <sparql>, <fetch>, <logger>;
+    #    rdfc:processor <ldes-client>, <sparql>, <logger>; 
+   ].
+
+
+### Define the processors
+
+<ldes-client> a rdfc:LdesClient;
+    rdfc:url <http://localhost:3000/ldes/>;
+    rdfc:output <members>.
+
+<sparql> a rdfc:SparqlProcessor;
+    rdfc:reader <members>;
+    rdfc:writer <mapped>;
+    rdfc:query """
+PREFIX rdf:      <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd:      <http://www.w3.org/2001/XMLSchema#>
+PREFIX sosa:     <http://www.w3.org/ns/sosa/>
+PREFIX ssn:      <http://www.w3.org/ns/ssn/>
+PREFIX time:     <http://www.w3.org/2006/time#>
+PREFIX geo:      <http://www.opengis.net/ont/geosparql#>
+PREFIX sf:       <http://www.opengis.net/ont/sf#>
+PREFIX prov:     <http://www.w3.org/ns/prov#>
+PREFIX dct:      <http://purl.org/dc/terms/>
+PREFIX stapi:    <https://w3id.org/stapi#>
+
+CONSTRUCT {
+    ?obs a sosa:Observation ;
+        sosa:hasFeatureOfInterest ?foi ;
+        sosa:observedProperty ?op ;
+        sosa:madeBySensor ?sensor ;
+        sosa:hasResult ?result ;
+        sosa:phenomenonTime ?phenTimeBlank ;
+        sosa:resultTime ?resTime ;
+        prov:generatedAtTime ?resTime .
+
+    # Phenomenon time as interval
+    ?phenTimeBlank a time:TemporalEntity ;
+        time:hasBeginning ?startBlank ;
+        time:hasEnd ?endBlank ;
+        time:hasXSDDuration ?duration .
+
+    ?startBlank a time:Instant ;
+        time:inXSDDateTimeStamp ?startTime .
+
+    ?endBlank a time:Instant ;
+            time:inXSDDateTimeStamp ?endTime .
+
+    # Feature of interest with geometry
+    ?foi a sosa:FeatureOfInterest ;
+        rdfs:label ?foiName ;
+        geo:hasGeometry ?geom .
+
+    ?geom a sf:Point ;
+            geo:asWKT ?wkt ;
+            geo:long ?long ;
+            geo:lat ?lat .
+
+    # Sensor
+    ?sensor a sosa:Sensor ;
+            rdfs:label ?sensorName ;
+            dct:description ?sensorDesc .
+
+    # Observed property
+    ?op a sosa:ObservableProperty ;
+        rdfs:label ?opName ;
+        dct:description ?opDesc .
+        
+} WHERE {
+
+    # Observation alignment
+    ?obs rdf:type stapi:Observation ;
+        stapi:datastream ?ds ;
+        stapi:featureOfInterest ?foi ;
+        stapi:result ?result ;
+        stapi:resultTime ?resTime ;
+        stapi:phenomenonTime ?phenTime .
+
+    # Phenomenon time interval structure
+    ?phenTime time:hasBeginning ?startBlank ;
+                time:hasEnd ?endBlank .
+    OPTIONAL { ?phenTime time:hasXSDDuration ?duration . }
+    ?startBlank time:inXSDDateTimeStamp ?startTime .
+    ?endBlank time:inXSDDateTimeStamp ?endTime .
+
+    # Feature of interest → geometry
+    ?foi rdf:type stapi:FeatureOfInterest ;
+        stapi:name ?foiName .
+    ?thing stapi:locations ?loc .
+
+    # location mapping
+    ?loc geo:hasGeometry ?geom .
+    ?geom geo:asWKT ?wkt ;
+        geo:long ?long ;
+        geo:lat ?lat .
+
+    # Sensor
+    ?ds stapi:sensor ?sensor ;
+        stapi:observedProperty ?op .
+    ?sensor stapi:name ?sensorName ;
+            stapi:description ?sensorDesc .
+
+    # Observed property
+    ?op stapi:name ?opName ;
+        stapi:description ?opDesc .
+}
+
+""".
+
+
+<fetch> a rdfc:HttpFetch;
+    rdfc:url "http://localhost:7878/store?default";
+    rdfc:reader <mapped>;
+    rdfc:options [
+        rdfc:method "POST";
+        rdfc:headers "Content-Type: text/turtle";
+        rdfc:acceptStatusCodes "200-300";
+        rdfc:bodyCanBeEmpty true;
+        rdfc:timeOutMilliseconds 5000;
+        rdfc:errorsAreFatal true
+    ].
+    
+
+###########
+# Logging #
+###########
+
+# Processor to log the output
+<logger> a rdfc:LogProcessorJs;
+    rdfc:reader <sds>;
+    rdfc:level "info";
+    rdfc:label "log".
+
+
+
+    

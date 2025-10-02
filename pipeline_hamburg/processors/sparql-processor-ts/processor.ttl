@@ -1,0 +1,39 @@
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix sh: <http://www.w3.org/ns/shacl#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+
+rdfc:SparqlProcessor rdfc:jsImplementationOf rdfc:Processor;
+    rdfs:label "RDF Sparql Processor";
+    rdfs:comment "Sparql processor that evaluates construct queries over the incoming datastream.";
+    rdfc:file <./lib/index.js>;
+    rdfc:class "SparqlProcessor";
+    rdfc:entrypoint <./>.
+
+[ ] a sh:NodeShape;
+    sh:targetClass rdfc:SparqlProcessor;
+    sh:property [
+        sh:class rdfc:Reader;
+        sh:path rdfc:reader;
+        sh:name "reader";
+        sh:minCount 1;
+        sh:maxCount 1;
+    ], [
+        sh:class rdfc:Writer;
+        sh:path rdfc:writer;
+        sh:name "writer";
+        sh:minCount 0;
+        sh:maxCount 1;
+    ], [
+        sh:datatype xsd:string;
+        sh:path rdfc:query;
+        sh:name "query";
+        sh:minCount 1;
+        sh:maxCount 1;
+    ], [
+        sh:datatype xsd:boolean;
+        sh:path rdfc:ldes;
+        sh:name "ldes";
+        sh:minCount 0;
+        sh:maxCount 1;
+    ].

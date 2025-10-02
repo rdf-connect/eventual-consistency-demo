@@ -1,0 +1,96 @@
+PREFIX rdf:      <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd:      <http://www.w3.org/2001/XMLSchema#>
+PREFIX sosa:     <http://www.w3.org/ns/sosa/>
+PREFIX ssn:      <http://www.w3.org/ns/ssn/>
+PREFIX time:     <http://www.w3.org/2006/time#>
+PREFIX geo:      <http://www.opengis.net/ont/geosparql#>
+PREFIX sf:       <http://www.opengis.net/ont/sf#>
+PREFIX prov:     <http://www.w3.org/ns/prov#>
+PREFIX dct:      <http://purl.org/dc/terms/>
+PREFIX stapi:    <https://w3id.org/stapi#>
+PREFIX verkeer:  <https://data.vlaanderen.be/ns/verkeersmetingen#>
+PREFIX impl:     <https://implementatie.data.vlaanderen.be/ns/vsds-verkeersmetingen#>
+PREFIX iso19156-ob: <http://def.isotc211.org/iso19156/2011/Observation#>
+PREFIX iso19156-sp: <http://def.isotc211.org/iso19156/2011/SamplingPoint#>
+
+CONSTRUCT {
+    ?obs a sosa:Observation ;
+        sosa:hasFeatureOfInterest ?foi ;
+        sosa:observedProperty ?op ;
+        sosa:madeBySensor ?sensor ;
+        sosa:hasResult ?result ;
+        sosa:phenomenonTime ?phenTimeBlank ;
+        sosa:resultTime ?resTime ;
+        prov:generatedAtTime ?resTime .
+
+    # Phenomenon time as interval
+    ?phenTimeBlank a time:TemporalEntity ;
+        time:hasBeginning ?startBlank ;
+        time:hasEnd ?endBlank ;
+        time:hasXSDDuration ?duration .
+
+    ?startBlank a time:Instant ;
+        time:inXSDDateTimeStamp ?startTime .
+
+    ?endBlank a time:Instant ;
+            time:inXSDDateTimeStamp ?endTime .
+
+    # Feature of interest with geometry
+    ?foi a sosa:FeatureOfInterest , iso19156-sp:SF_SamplingPoint ;
+        rdfs:label ?foiName ;
+        geo:hasGeometry ?geom .
+
+    ?geom a sf:Point ;
+            geo:asWKT ?wkt ;
+            geo:long ?long ;
+            geo:lat ?lat .
+
+    # Sensor
+    ?sensor a sosa:Sensor ;
+            rdfs:label ?sensorName ;
+            dct:description ?sensorDesc .
+
+    # Observed property
+    ?op a sosa:ObservableProperty ;
+        rdfs:label ?opName ;
+        dct:description ?opDesc .
+        
+} WHERE {
+
+    # Observation alignment
+    ?obs rdf:type stapi:Observation ;
+        stapi:datastream ?ds ;
+        stapi:featureOfInterest ?foi ;
+        stapi:result ?result ;
+        stapi:resultTime ?resTime ;
+        stapi:phenomenonTime ?phenTime .
+
+    # Phenomenon time interval structure
+    ?phenTime time:hasBeginning ?startBlank ;
+                time:hasEnd ?endBlank .
+    OPTIONAL { ?phenTime time:hasXSDDuration ?duration . }
+    ?startBlank time:inXSDDateTimeStamp ?startTime .
+    ?endBlank time:inXSDDateTimeStamp ?endTime .
+
+    # Feature of interest → geometry
+    ?foi rdf:type stapi:FeatureOfInterest ;
+        stapi:name ?foiName .
+    ?thing stapi:locations ?loc .
+
+    # location mapping
+    ?loc geo:hasGeometry ?geom .
+    ?geom geo:asWKT ?wkt ;
+        geo:long ?long ;
+        geo:lat ?lat .
+
+    # Sensor
+    ?ds stapi:sensor ?sensor ;
+        stapi:observedProperty ?op .
+    ?sensor stapi:name ?sensorName ;
+            stapi:description ?sensorDesc .
+
+    # Observed property
+    ?op stapi:name ?opName ;
+        stapi:description ?opDesc .
+}
