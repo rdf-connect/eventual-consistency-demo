@@ -1,14 +1,12 @@
 import { Processor, type Reader, type Writer } from "@rdfc/js-runner";
 import { rdfSerializer } from "rdf-serialize";
 import { QueryEngine } from "@comunica/query-sparql"
-import { Extractor } from "./extractor";
 
 
 type QueryArgs = {
     reader: Reader;
     writer: Writer;
     query: string;
-    ldes: boolean;
 };
 
 /**
@@ -37,33 +35,19 @@ export class SparqlProcessor extends Processor<QueryArgs> {
     async transform(this: QueryArgs & this): Promise<void> {
         const promises: Promise<any>[] = []
         for await (const serializedRDF of this.reader.strings()) {
-            // console.log('INPUT DATA', serializedRDF)
             const myEngine = new QueryEngine();
-            // if (!this.ldes) {
-                const quadStream = await myEngine.queryQuads(this.query, 
-                { sources: [
-                        {
-                            type: 'serialized',
-                            value: serializedRDF,
-                            mediaType: 'application/n-quads',
-                            baseIRI: 'http://example.org/',
-                        },
-                ]});
-
-                const serialized = rdfSerializer.serialize(quadStream, { contentType: "application/n-quads"} )
-                const promise = this.writer.stream(toUint8ArrayStream(serialized));
-                promises.push(promise)
-            // } else {
-            //     const members = []
-            //     // We need to extract the individual members, process them individually through the query engine and then output the resulting mappings
-            //     const extractor = new Extractor()
-            //     console.log(`extracting serialized rdf ${serializedRDF}`)
-            //     const extracted = extractor.extract(serializedRDF);
-            //     console.log('EXTRACTED', JSON.stringify(extracted, null, 2))
-                
-            // }
-
-            
+            const quadStream = await myEngine.queryQuads(this.query, 
+            { sources: [
+                    {
+                        type: 'serialized',
+                        value: serializedRDF,
+                        mediaType: 'application/n-quads',
+                        baseIRI: 'http://example.org/',
+                    },
+            ]});
+            const serialized = rdfSerializer.serialize(quadStream, { contentType: "application/n-quads"} )
+            const promise = this.writer.stream(toUint8ArrayStream(serialized));
+            promises.push(promise)
         }
         
         await Promise.all(promises)

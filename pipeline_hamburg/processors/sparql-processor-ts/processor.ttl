@@ -30,10 +30,4 @@ rdfc:SparqlProcessor rdfc:jsImplementationOf rdfc:Processor;
         sh:name "query";
         sh:minCount 1;
         sh:maxCount 1;
-    ], [
-        sh:datatype xsd:boolean;
-        sh:path rdfc:ldes;
-        sh:name "ldes";
-        sh:minCount 0;
-        sh:maxCount 1;
     ].
