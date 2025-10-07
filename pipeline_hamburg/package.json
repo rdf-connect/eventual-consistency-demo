@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "postinstall": "(cd processors/sds-storage-writer-ts && npm install && npm run build); (cd processors/sparql-processor-ts && npm install && npm run build); (cd processors/http-utils-processor-ts && npm install && npm run build); ",
+    "postinstall": "(cd processors/sparql-processor-ts && npm install && npm run build); (cd processors/http-utils-processor-ts && npm install && npm run build); ",
     "test": ""
   },
   "dependencies": {

@@ -7,3 +7,4 @@ COPY . .
 RUN npm install
 # Container's entrypoint command
 ENTRYPOINT [ "npx", "rdfc", "pipeline.ttl" ]
+

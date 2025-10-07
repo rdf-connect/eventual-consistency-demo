@@ -5,12 +5,14 @@
 @prefix tree: <https://w3id.org/tree#>.
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
 @prefix ssn: <http://www.w3.org/ns/ssn/>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
 
 
 ### Import runners and processors
 <> owl:imports <./node_modules/@rdfc/js-runner/index.ttl>.
 <> owl:imports <./node_modules/ldes-client/processor.ttl>.
 <> owl:imports <./processors/http-utils-processor-ts/processors.ttl>.
+<> owl:imports <./node_modules/@rdfc/log-processor-ts/processor.ttl>.
 
 ### Define the channels
 <members> a rdfc:Reader, rdfc:Writer.
@@ -19,27 +21,37 @@
 <> a rdfc:Pipeline;
     rdfc:consistsOf [
        rdfc:instantiates rdfc:NodeRunner;
-       rdfc:processor <ldes-client>, <fetch>;    
+       rdfc:processor <ldes-client>, <logger>;    
     ].
 
 
 ### Define the processors
 
 <ldes-client> a rdfc:LdesClient;
-    rdfc:url <https://ldes.telraam-api.net/observations/by-time>;
+    rdfc:FetchConfig [ rdfc:concurrent 1 ] ;
+    rdfc:url "https://ldes.telraam-api.net/observations/by-time";
+    rdfc:after "2025-10-04T01:01:01.000Z"^^xsd:dateTime;
     rdfc:urlIsView true;
-    rdfc:output <members>.
+    rdfc:output <members> .
 
+# <fetch> a rdfc:HttpFetch;
+#     rdfc:url "http://localhost:7878/store?default";
+#     rdfc:reader <members>;
+#     rdfc:options [
+#         rdfc:method "POST";
+#         rdfc:headers "Content-Type: text/turtle";
+#         rdfc:acceptStatusCodes "200-300";
+#         rdfc:bodyCanBeEmpty true;
+#         rdfc:timeOutMilliseconds 5000;
+#         rdfc:errorsAreFatal true
+#     ].
 
-
-<fetch> a rdfc:HttpFetch;
-    rdfc:url "http://localhost:7878/store?default";
+# Processor to log the output
+<logger> a rdfc:LogProcessorJs;
     rdfc:reader <members>;
-    rdfc:options [
-        rdfc:method "POST";
-        rdfc:headers "Content-Type: text/turtle";
-        rdfc:acceptStatusCodes "200-300";
-        rdfc:bodyCanBeEmpty true;
-        rdfc:timeOutMilliseconds 5000;
-        rdfc:errorsAreFatal true
-    ].
+    rdfc:level "info";
+    rdfc:label "log".
+
+
+
+    

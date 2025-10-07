@@ -7,8 +7,8 @@ services:
     command: serve --location /data --bind 0.0.0.0:7878
     ports:
       - "7878:7878"
-    volumes:
-      - ./oxigraph-data:/data
+    # volumes:
+    #   - ./oxigraph-data:/data
     restart: unless-stopped
 
   hamburg_client:
@@ -20,7 +20,20 @@ services:
         max-size: "10m"
         max-file: "3"
     depends_on:
+      - proxy_to_host
       - oxigraph
+    # environment:
+    #   - DEBUG=*
+    extra_hosts:
+      - "localhost:host-gateway"
+  
+
+  proxy_to_host:
+    image: alpine/socat
+    container_name: proxy_to_host
+    command: tcp-listen:3000,fork,reuseaddr tcp-connect:host.docker.internal:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   
   telraam_client:
     container_name: telraam_client
@@ -32,3 +45,5 @@ services:
         max-file: "3"
     depends_on:
       - oxigraph
+    environment:
+      - DEBUG=*

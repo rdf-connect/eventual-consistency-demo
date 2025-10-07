@@ -18,60 +18,35 @@ PREFIX MeasureTypes: <http://def.isotc211.org/iso19103/2015/MeasureTypes#>
 PREFIX VkmMeetInstrumentType: <https://data.vlaanderen.be/doc/concept/VkmMeetInstrumentType/>
 PREFIX VkmVerkeersKenmerkType: <https://data.vlaanderen.be/doc/concept/VkmVerkeersKenmerkType/>
 PREFIX VkmVoertuigType: <https://data.vlaanderen.be/doc/concept/VkmVoertuigType/>
-PREFIX by-time: <https://ldes.telraam-api.net/observations/by-time/>
-PREFIX cdt: <https://w3id.org/cdt/>
 PREFIX cl-mit: <https://data.vlaanderen.be/doc/concept/VkmMeetInstrumentType/>
-PREFIX cl-op: <https://data.vlaanderen.be/doc/concept/VkmObservatieProcedure/>
-PREFIX cl-trt: <https://inspire.ec.europa.eu/codelist/LinkDirectionValue/>
-PREFIX cl-vkt: <https://data.vlaanderen.be/doc/concept/VkmVerkeersKenmerkType/>
 PREFIX cl-vrt: <https://data.vlaanderen.be/doc/concept/VkmVoertuigType/>
-PREFIX dcat: <http://www.w3.org/ns/dcat#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX dv-netwerk: <https://data.vlaanderen.be/ns/netwerk#>
-PREFIX dv-om: <https://data.vlaanderen.be/ns/observaties-en-metingen/#>
-PREFIX dv-weg: <https://data.vlaanderen.be/ns/weg#>
-PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-PREFIX geoc: <https://opengis.net/def/function/geosparql/custom#>
-PREFIX geosparql: <http://www.opengis.net/ont/geosparql#>
+PREFIX cl-vkt: <https://data.vlaanderen.be/doc/concept/VkmVerkeersKenmerkType/>
 PREFIX impl: <https://implementatie.data.vlaanderen.be/ns/vsds-verkeersmetingen#>
 PREFIX iso19103-mp: <http://def.isotc211.org/iso19103/2015/MeasureTypes#>
-PREFIX iso19156-ob: <http://def.isotc211.org/iso19156/2011/Observation#>
-PREFIX iso19156-sp: <http://def.isotc211.org/iso19156/2011/SamplingPoint#>
-PREFIX ldes: <https://w3id.org/ldes#>
-PREFIX locn: <http://www.w3.org/ns/locn#>
-PREFIX m8g: <http://data.europa.eu/m8g/>
-PREFIX observations: <https://ldes.telraam-api.net/observations/>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX schema: <https://schema.org/>
-PREFIX sf: <http://www.opengis.net/ont/sf#>
-PREFIX sh: <http://www.w3.org/ns/shacl#>
-PREFIX shsh: <http://www.w3.org/ns/shacl-shacl#>
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-PREFIX sosa: <http://www.w3.org/ns/sosa/>
-PREFIX ssn: <http://www.w3.org/ns/ssn/>
-PREFIX telraam: <https://telraam.net/en/location/>
-PREFIX terms: <http://purl.org/dc/terms/>
 PREFIX time: <http://www.w3.org/2006/time#>
-PREFIX tree: <https://w3id.org/tree#>
-PREFIX verkeer: <https://data.vlaanderen.be/ns/verkeersmetingen#>
-PREFIX verkeersmetingen: <https://data.vlaanderen.be/ns/verkeersmetingen#>
 PREFIX weg: <https://data.vlaanderen.be/ns/weg#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 
 CONSTRUCT {
 
-    ?obs a sosa:Observation, impl:Verkeerstelling, verkeersmetingen:Verkeersmeting ;
+    ?obs a sosa:Observation, impl:Verkeerstelling, verkeer:Verkeersmeting ;
+
         iso19156-ob:OM_Observation.phenomenonTime  ?ptime;
+        sosa:phenomenonTime ?ptime;
+
         prov:generatedAtTime  ?rtime ;
+        sosa:resultTime ?rtime;
+
         sosa:madeBySensor  ?sensor ;
-        verkeersmetingen:geobserveerdObject  _:object ;
+
+        verkeer:geobserveerdObject  _:object ;
+
         impl:Verkeerstelling.geobserveerdKenmerk  ?obsprop ;
-        impl:Verkeerstelling.tellingresultaat  ?doubleresult .
+        sosa:observedProperty ?obsprop ;
+        
+        impl:Verkeerstelling.tellingresultaat  ?doubleresult ;
+        sosa:hasSimpleResult ?result .
 
     ?ptime    rdf:type  time:TemporalEntity;
         time:hasBeginning    ?start;
@@ -81,17 +56,17 @@ CONSTRUCT {
         time:inXSDDateTimeStamp  ?startTime .
 
     ?sensor    rdf:type    sosa:Sensor;
-        terms:type  cl-mit:telraam .
+        dct:type  cl-mit:telraam .
 
-    ?obsprop    rdf:type impl:Verkeerstellingkenmerk;
-        verkeersmetingen:voertuigType  ?vehicletype;
+    ?obsprop    rdf:type impl:Verkeerstellingkenmerk, sosa:ObservedProperty;
+        verkeer:voertuigType  cl-vrt:auto;
         impl:Verkeerstellingkenmerk.kenmerktype  cl-vkt:aantal .
 
-    _:object     rdf:type  verkeersmetingen:Verkeersmeetpunt ;
+    _:object     rdf:type  verkeer:Verkeersmeetpunt ;
         iso19156-sp:SF_SamplingPoint.shape ?geom .
 
     ?geom    rdf:type         sf:Point;
-        geosparql:asWKT  ?wkt .
+        geo:asWKT  ?wkt .
 
 } WHERE {
 
@@ -111,12 +86,12 @@ CONSTRUCT {
     OPTIONAL { ?ptime time:hasXSDDuration ?duration . }
     
 
-    # # Feature of interest → geometry
+    # Feature of interest → geometry
     ?foi rdf:type stapi:FeatureOfInterest ;
         stapi:name ?foiName .
     ?thing stapi:locations ?loc .
 
-    # # location mapping
+    # location mapping
     ?loc geo:hasGeometry ?geom .
     ?geom geo:asWKT ?wkt ;
         geo:long ?long ;
