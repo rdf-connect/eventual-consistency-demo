@@ -22,18 +22,12 @@ services:
     depends_on:
       - proxy_to_host
       - oxigraph
-    # environment:
-    #   - DEBUG=*
+    environment:
+      - DEBUG=*
     extra_hosts:
       - "localhost:host-gateway"
   
 
-  proxy_to_host:
-    image: alpine/socat
-    container_name: proxy_to_host
-    command: tcp-listen:3000,fork,reuseaddr tcp-connect:host.docker.internal:3000
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
   
   telraam_client:
     container_name: telraam_client
@@ -45,5 +39,15 @@ services:
         max-file: "3"
     depends_on:
       - oxigraph
+      - proxy_to_host
     environment:
       - DEBUG=*
+    extra_hosts:
+      - "localhost:host-gateway"
+
+  proxy_to_host:
+    image: alpine/socat
+    container_name: proxy_to_host
+    command: tcp-listen:3000,fork,reuseaddr tcp-connect:host.docker.internal:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

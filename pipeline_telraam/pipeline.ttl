@@ -21,37 +21,37 @@
 <> a rdfc:Pipeline;
     rdfc:consistsOf [
        rdfc:instantiates rdfc:NodeRunner;
-       rdfc:processor <ldes-client>, <logger>;    
+       rdfc:processor <ldes-client>, <fetch>;    
     ].
 
-
 ### Define the processors
-
 <ldes-client> a rdfc:LdesClient;
-    rdfc:FetchConfig [ rdfc:concurrent 1 ] ;
+    rdfc:FetchConfig [ 
+        rdfc:concurrent 1;
+        rdfc:retry [
+            rdfc:maxRetries 50;
+        ];
+    ] ;
     rdfc:url "https://ldes.telraam-api.net/observations/by-time";
-    rdfc:after "2025-10-04T01:01:01.000Z"^^xsd:dateTime;
+    rdfc:after "2025-01-01T01:01:01.000Z"^^xsd:dateTime;
     rdfc:urlIsView true;
+    rdfc:follow true;
     rdfc:output <members> .
 
-# <fetch> a rdfc:HttpFetch;
-#     rdfc:url "http://localhost:7878/store?default";
-#     rdfc:reader <members>;
-#     rdfc:options [
-#         rdfc:method "POST";
-#         rdfc:headers "Content-Type: text/turtle";
-#         rdfc:acceptStatusCodes "200-300";
-#         rdfc:bodyCanBeEmpty true;
-#         rdfc:timeOutMilliseconds 5000;
-#         rdfc:errorsAreFatal true
-#     ].
+<fetch> a rdfc:HttpFetch;
+    rdfc:url "http://localhost:7878/store?default";
+    rdfc:reader <members>;
+    rdfc:options [
+        rdfc:method "POST";
+        rdfc:headers "Content-Type: text/turtle";
+        rdfc:acceptStatusCodes "200-300";
+        rdfc:bodyCanBeEmpty true;
+        rdfc:timeOutMilliseconds 5000;
+        rdfc:errorsAreFatal true
+    ].
 
 # Processor to log the output
 <logger> a rdfc:LogProcessorJs;
     rdfc:reader <members>;
     rdfc:level "info";
     rdfc:label "log".
-
-
-
-    
