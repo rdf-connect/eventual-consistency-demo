@@ -45,9 +45,10 @@
         #     rdfc:maxRetries 50;
         # ];
     ] ;
-    rdfc:url <http://localhost:3000/ldes/>; # Local machine
+    rdfc:url <http://193.190.127.147/ldes/>;
+    # rdfc:url <http://localhost:3000/ldes/>; # Local machine
     # rdfc:url <http://proxy_to_host:3000/ldes/>; # Local docker 
-    # rdfc:after "2025-01-01T01:01:01.000Z"^^xsd:dateTime;
+    rdfc:after "2025-01-01T01:01:01.000Z"^^xsd:dateTime;
     rdfc:follow true;
     rdfc:output <members> .
 
