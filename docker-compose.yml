@@ -4,7 +4,7 @@ services:
   oxigraph:
     image: ghcr.io/oxigraph/oxigraph:latest
     container_name: oxigraph
-    command: serve --location /data --bind 0.0.0.0:7878
+    command: serve --location /data --bind 0.0.0.0:7878 --cors
     ports:
       - "7878:7878"
     # volumes:
@@ -26,8 +26,6 @@ services:
       - DEBUG=*
     extra_hosts:
       - "localhost:host-gateway"
-  
-
   
   telraam_client:
     container_name: telraam_client
@@ -51,3 +49,12 @@ services:
     command: tcp-listen:3000,fork,reuseaddr tcp-connect:host.docker.internal:3000
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  
+  yasgui:
+    image: erikap/yasgui:latest
+    container_name: yasgui
+    ports:
+      - "8080:80"
+    environment:
+      - DEFAULT_SPARQL_ENDPOINT=http://localhost:7878/query

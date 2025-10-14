@@ -134,4 +134,45 @@ CONSTRUCT {
 ## Loading the data 
 The resulting mappings from the hamburg client pipeline, as well as the data from the telraam API are loaded into a local oxigraph instance through the docker compose setup.
 
-The docker compose spins up a query interface on the local machine at: `http://localhost:7878/query`
+The docker compose spins up a query interface on the local machine at: `http://localhost:7878/query`,
+for which the gui is available in the browser at `http://localhost:7878/`.
+To include geo locations in the GUI, we spin up a separate YASGUI interface at `http://localhost:8080` in the docker compose project.
+
+An example query over the data is shown below: 
+
+```sparql
+
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX impl: <https://implementatie.data.vlaanderen.be/ns/vsds-verkeersmetingen#>
+PREFIX verkeer: <https://data.vlaanderen.be/ns/verkeersmetingen#>
+PREFIX impl: <https://implementatie.data.vlaanderen.be/ns/vsds-verkeersmetingen#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX sf: <http://www.opengis.net/ont/sf#>
+PREFIX time: <http://www.w3.org/2006/time#>
+PREFIX geosparql: <http://www.opengis.net/ont/geosparql#>
+PREFIX iso19156-sp: <http://def.isotc211.org/iso19156/2011/SamplingPoint#>
+PREFIX iso19156-ob: <http://def.isotc211.org/iso19156/2011/Observation#>
+
+SELECT ?observation ?timeStart ?timeDuration ?result ?locationWKT 
+WHERE {
+    ?observation a verkeer:Verkeersmeting ;
+        impl:Verkeerstelling.tellingresultaat ?result ;
+        verkeer:geobserveerdObject ?object ;
+        iso19156-ob:OM_Observation.phenomenonTime  ?phenomenonTime.
+        
+    ?phenomenonTime a time:TemporalEntity;
+            time:hasBeginning    ?timeStartObject;
+            time:hasXSDDuration  ?timeDuration .
+
+    ?timeStartObject a time:Instant;
+            time:inXSDDateTimeStamp ?timeStart .
+
+    ?object a verkeer:Verkeersmeetpunt ;
+            iso19156-sp:SF_SamplingPoint.shape  ?location .
+
+    ?location a sf:Point;
+            geosparql:asWKT  ?locationWKT .
+} LIMIT 10000
+```
