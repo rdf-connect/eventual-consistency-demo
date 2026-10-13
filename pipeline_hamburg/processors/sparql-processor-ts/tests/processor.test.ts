@@ -1,29 +1,40 @@
 import { describe, expect, test } from "vitest";
-import { checkProcDefinition, getProc } from "@rdfc/js-runner/lib/testUtils";
+import { ProcHelper } from "@rdfc/js-runner/lib/testUtils";
+import * as path from "path";
 
-import { TemplateProcessor } from "../src";
+import { SparqlProcessor } from "../src";
 
-describe("Template processor tests", async () => {
-    test("rdfc:TemplateProcessorJs is properly defined", async () => {
+describe("SPARQL processor tests", async () => {
+    test("rdfc:SparqlProcessor is properly defined", async () => {
         const processorConfig = `
         @prefix rdfc: <https://w3id.org/rdf-connect#>.
 
-        <http://example.com/ns#processor> a rdfc:TemplateProcessorJs;
+        <http://example.com/ns#processor> a rdfc:SparqlProcessor;
           rdfc:reader <jr>;
-          rdfc:writer <jw>.
+          rdfc:writer <jw>;
+          rdfc:query "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }".
         `;
 
-        const configLocation = process.cwd() + "/processor.ttl";
-        await checkProcDefinition(configLocation, "TemplateProcessorJs");
-
-        const processor = await getProc<TemplateProcessor>(
+        const helper = new ProcHelper<SparqlProcessor>();
+        await helper.importFile(path.resolve("./processor.ttl"));
+        await helper.importInline(
+            path.resolve("pipeline.ttl"),
             processorConfig,
-            "TemplateProcessorJs",
-            configLocation,
         );
-        await processor.init();
+
+        const config = helper.getConfig("SparqlProcessor");
+        expect(config.location).toBeDefined();
+        expect(config.file).toBeDefined();
+        expect(config.clazz).toEqual("SparqlProcessor");
+
+        const processor = await helper.getProcessor(
+            "http://example.com/ns#processor",
+        );
 
         expect(processor.reader.constructor.name).toBe("ReaderInstance");
         expect(processor.writer?.constructor.name).toBe("WriterInstance");
+        expect(processor.query).toBe(
+            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }",
+        );
     });
 });

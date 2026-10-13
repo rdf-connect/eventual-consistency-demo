@@ -9,8 +9,7 @@ import {
 import { HttpUtilsError } from "../../src/error";
 import { Fetch } from "../fetch";
 import { HttpBasicAuth } from "../../src/auth/basic";
-import { httpFetch } from "../../src";
-import { SimpleStream } from "@rdfc/js-runner";
+import { fetchProc } from "../writer";
 
 const mockFetch = new Fetch();
 
@@ -31,60 +30,47 @@ describe("basic.ts auth", () => {
     test("successful", async () => {
         mockFetch.set({ credentials: new HttpBasicAuth("admin", "password") });
 
-        const func = await httpFetch(
-            "https://example.com",
-            new SimpleStream<string>(),
-            {
-                auth: {
-                    type: "basic",
-                    username: "admin",
-                    password: "password",
-                },
+        const { proc } = await fetchProc("https://example.com", {
+            auth: {
+                type: "basic",
+                username: "admin",
+                password: "password",
             },
-        );
+        });
 
-        return expect(func()).resolves.toBeUndefined();
+        return expect(proc.produce()).resolves.toBeUndefined();
     });
 
     test("invalid credentials", async () => {
         mockFetch.set({ credentials: new HttpBasicAuth("admin", "password") });
 
-        const func = await httpFetch(
-            "https://example.com",
-            new SimpleStream<string>(),
-            {
-                auth: {
-                    type: "basic",
-                    username: "admin",
-                    password: "invalid",
-                },
+        const { proc } = await fetchProc("https://example.com", {
+            auth: {
+                type: "basic",
+                username: "admin",
+                password: "invalid",
             },
-        );
+        });
 
-        return expect(func()).rejects.toThrow(HttpUtilsError.credentialIssue());
+        return expect(proc.produce()).rejects.toThrow(
+            HttpUtilsError.credentialIssue(),
+        );
     });
 
     test("no credentials", async () => {
         mockFetch.set({ credentials: new HttpBasicAuth("admin", "password") });
 
-        const func = await httpFetch(
-            "https://example.com",
-            new SimpleStream<string>(),
-        );
+        const { proc } = await fetchProc("https://example.com");
 
-        return expect(func()).rejects.toThrow(
+        return expect(proc.produce()).rejects.toThrow(
             HttpUtilsError.unauthorizedError(),
         );
     });
 
     test("incomplete config", async () => {
-        let func = httpFetch(
-            "https://example.com",
-            new SimpleStream<string>(),
-            {
-                auth: { type: "basic", password: "password" },
-            },
-        );
+        let func = fetchProc("https://example.com", {
+            auth: { type: "basic", password: "password" },
+        });
 
         await expect(func).rejects.toThrow(
             HttpUtilsError.illegalParameters(
@@ -92,7 +78,7 @@ describe("basic.ts auth", () => {
             ),
         );
 
-        func = httpFetch("https://example.com", new SimpleStream<string>(), {
+        func = fetchProc("https://example.com", {
             auth: { type: "basic", username: "username" },
         });
 

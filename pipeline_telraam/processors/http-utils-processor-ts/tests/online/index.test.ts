@@ -1,8 +1,6 @@
 import { describe, test, expect } from "vitest";
-import { SimpleStream } from "@rdfc/js-runner";
 import { HttpUtilsError } from "../../src/error";
-import { httpFetch } from "../../src";
-import { writer } from "../writer";
+import { fetchProc, output } from "../writer";
 
 describe("Real world datasets", () => {
     // Retrieve RINF credentials.
@@ -13,18 +11,9 @@ describe("Real world datasets", () => {
     rinfTest(
         "RINF - success",
         async () => {
-            // Output stream which we'll check for correctness.
-            const writeStream = writer((output) => {
-                const json = JSON.parse(output);
-                expect(json["@odata.context"]).toEqual(
-                    "https://rinf.era.europa.eu/API/$metadata#DatasetImports",
-                );
-            });
-
             // Execute the function.
-            const func = await httpFetch(
+            const { proc, reader } = await fetchProc(
                 "https://rinf.era.europa.eu/api/DatasetImports",
-                writeStream,
                 {
                     auth: {
                         type: "oauth2",
@@ -34,8 +23,15 @@ describe("Real world datasets", () => {
                     },
                 },
             );
+            // Output which we'll check for correctness.
+            const out = output(reader);
 
-            await func();
+            await proc.produce();
+
+            const json = JSON.parse(await out);
+            expect(json["@odata.context"]).toEqual(
+                "https://rinf.era.europa.eu/API/$metadata#DatasetImports",
+            );
         },
         10 * 1000,
     );
@@ -43,12 +39,11 @@ describe("Real world datasets", () => {
     rinfTest(
         "RINF - missing credentials",
         async () => {
-            const func = await httpFetch(
+            const { proc } = await fetchProc(
                 "https://rinf.era.europa.eu/api/DatasetImports",
-                new SimpleStream<Buffer>(),
             );
 
-            return expect(func()).rejects.toThrow(
+            return expect(proc.produce()).rejects.toThrow(
                 HttpUtilsError.unauthorizedError(),
             );
         },
@@ -58,9 +53,8 @@ describe("Real world datasets", () => {
     rinfTest(
         "RINF - invalid credentials",
         async () => {
-            const func = await httpFetch(
+            const { proc } = await fetchProc(
                 "https://rinf.era.europa.eu/api/DatasetImports",
-                new SimpleStream<Buffer>(),
                 {
                     auth: {
                         type: "oauth2",
@@ -71,7 +65,7 @@ describe("Real world datasets", () => {
                 },
             );
 
-            return expect(func()).rejects.toThrow(
+            return expect(proc.produce()).rejects.toThrow(
                 HttpUtilsError.oAuth2TokenError(400),
             );
         },
@@ -86,9 +80,8 @@ describe("Real world datasets", () => {
     wormsTest(
         "WoRMS - success",
         async () => {
-            const func = await httpFetch(
+            const { proc } = await fetchProc(
                 "https://www.marinespecies.org/download/",
-                new SimpleStream<string>(),
                 {
                     auth: {
                         type: "basic",
@@ -98,7 +91,7 @@ describe("Real world datasets", () => {
                 },
             );
 
-            return expect(func()).resolves.toBeUndefined();
+            return expect(proc.produce()).resolves.toBeUndefined();
         },
         10 * 1000,
     );
@@ -106,12 +99,11 @@ describe("Real world datasets", () => {
     wormsTest(
         "WoRMS - missing credentials",
         async () => {
-            const func = await httpFetch(
+            const { proc } = await fetchProc(
                 "https://www.marinespecies.org/download/",
-                new SimpleStream<string>(),
             );
 
-            return expect(func()).rejects.toThrow(
+            return expect(proc.produce()).rejects.toThrow(
                 HttpUtilsError.unauthorizedError(),
             );
         },
@@ -121,9 +113,8 @@ describe("Real world datasets", () => {
     wormsTest(
         "WoRMS - invalid credentials",
         async () => {
-            const func = await httpFetch(
+            const { proc } = await fetchProc(
                 "https://www.marinespecies.org/download/",
-                new SimpleStream<string>(),
                 {
                     auth: {
                         type: "basic",
@@ -133,7 +124,7 @@ describe("Real world datasets", () => {
                 },
             );
 
-            return expect(func()).rejects.toThrow(
+            return expect(proc.produce()).rejects.toThrow(
                 HttpUtilsError.credentialIssue(),
             );
         },
@@ -145,33 +136,27 @@ describe("Real world datasets", () => {
     const blueBikeTest = blueBike === "true" ? test : test.skip;
 
     blueBikeTest("BlueBike - success", async () => {
-        const writeStream = writer((output) => {
-            expect(JSON.parse(output).length).toBeGreaterThan(100);
-        });
-
-        const func = await httpFetch(
+        const { proc, reader } = await fetchProc(
             "https://api.blue-bike.be/pub/location",
-            writeStream,
         );
+        const out = output(reader);
 
-        return expect(func()).resolves.toBeUndefined();
+        await expect(proc.produce()).resolves.toBeUndefined();
+        expect(JSON.parse(await out).length).toBeGreaterThan(100);
     });
 
     test(
         "Swedish - success",
         async () => {
-            const writeStream = writer((output) => {
-                console.log(
-                    `Size of incoming data: ${output.length} characters.`,
-                );
-            });
-
-            const func = await httpFetch(
+            const { proc, reader } = await fetchProc(
                 "https://admin.dataportal.se/all.rdf",
-                writeStream,
             );
+            const out = output(reader);
 
-            return expect(func()).resolves.toBeUndefined();
+            await expect(proc.produce()).resolves.toBeUndefined();
+            console.log(
+                `Size of incoming data: ${(await out).length} characters.`,
+            );
         },
         60 * 1000,
     );
