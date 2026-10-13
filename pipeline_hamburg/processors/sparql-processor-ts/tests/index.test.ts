@@ -1,55 +1,87 @@
 import { describe, expect, test } from "vitest";
-import { TemplateProcessor } from "../src";
-import { createWriter, logger } from "@rdfc/js-runner/lib/testUtils";
-import { FullProc } from "@rdfc/js-runner";
+import { SparqlProcessor } from "../src";
+import { channel, createRunner } from "@rdfc/js-runner/lib/testUtils";
+import { FullProc, Reader } from "@rdfc/js-runner";
+import { createLogger, transports } from "winston";
 
-describe("Functional tests for the Template processor", () => {
-    test("It writes everything from the reader", async () => {
-        const [inputWriter, inputReader] = createWriter();
-        const [outputWriter, outputReader] = createWriter();
+const logger = createLogger({
+    transports: new transports.Console({
+        level: process.env["DEBUG"] || "info",
+    }),
+});
 
-        const proc = <FullProc<TemplateProcessor>>new TemplateProcessor(
-            {
-                reader: inputReader,
-                writer: outputWriter,
-            },
-            logger,
-        );
+const query = `
+PREFIX ex: <http://example.org/>
+CONSTRUCT { ?s ex:label ?o } WHERE { ?s ex:name ?o }
+`;
 
-        await proc.init();
-        const prom = proc.transform();
+async function setup() {
+    const runner = createRunner();
+    const [inputWriter, inputReader] = channel(runner, "input");
+    const [outputWriter, outputReader] = channel(runner, "output");
+
+    const proc = <FullProc<SparqlProcessor>>new SparqlProcessor(
+        {
+            reader: inputReader,
+            writer: outputWriter,
+            query,
+        },
+        logger,
+    );
+    await proc.init();
+
+    return { proc, inputWriter, outputReader };
+}
+
+function collect(reader: Reader): Promise<string[]> {
+    return (async () => {
+        const collected: string[] = [];
+        for await (const msg of reader.strings()) {
+            collected.push(msg);
+        }
+        return collected;
+    })();
+}
+
+describe("Functional tests for the SPARQL processor", () => {
+    test("It applies the CONSTRUCT query to every incoming message", async () => {
+        const { proc, inputWriter, outputReader } = await setup();
 
         // Read messages in the background
-        // (we don't await it yet, as we want to push messages first)
-        const readPromise = (async () => {
-            const collected: string[] = [];
-            for await (const msg of outputReader.strings()) {
-                collected.push(msg);
-            }
-            return collected;
-        })();
+        const readPromise = collect(outputReader);
+        const prom = proc.transform();
 
-        // Push messages into input
-        await inputWriter.string("Hello, World!");
-        await inputWriter.string("This is a second message");
-        await inputWriter.string("Goodbye.");
-        await new Promise((r) => process.nextTick(r));
+        await inputWriter.string(
+            `<http://example.org/a> <http://example.org/name> "A" .
+<http://example.org/a> <http://example.org/other> "ignored" .`,
+        );
+        await inputWriter.string(
+            `<http://example.org/b> <http://example.org/name> "B" .`,
+        );
         await inputWriter.close();
 
-        // Close reader so iteration finishes
-        outputReader.close();
-
-        // Collect output
+        // The processor closes its writer once the input is closed,
+        // which ends the output iteration.
+        await prom;
         const collected = await readPromise;
 
-        // Wait for processor to finish
-        await prom;
+        expect(collected).toHaveLength(2);
+        expect(collected[0].trim()).toBe(
+            '<http://example.org/a> <http://example.org/label> "A" .',
+        );
+        expect(collected[1].trim()).toBe(
+            '<http://example.org/b> <http://example.org/label> "B" .',
+        );
+    });
 
-        // Assertions on output data
-        expect(collected).toEqual([
-            "Hello, World!",
-            "This is a second message",
-            "Goodbye.",
-        ]);
+    test("It closes the writer when the input closes without messages", async () => {
+        const { proc, inputWriter, outputReader } = await setup();
+
+        const readPromise = collect(outputReader);
+        const prom = proc.transform();
+
+        await inputWriter.close();
+        await prom;
+        expect(await readPromise).toEqual([]);
     });
 });
